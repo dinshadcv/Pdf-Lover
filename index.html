@@ -170,7 +170,7 @@ export default function App(){
     const next = redoStack.current.pop()
     setAnnotations(JSON.parse(next))
   }
-
+gs
   function handleFile(e){
     const file = e.target.files[0]
     if(!file) return
@@ -354,4 +354,115 @@ export default function App(){
         const png = await (await fetch(imgBytes)).arrayBuffer()
         const img = await outPdf.embedPng(png)
         const {width, height} = img.scale(1)
-        const pdfPage = outP
+        const pdfPage = outPdf.addPage([width, height])
+        pdfPage.drawImage(img, {x:0,y:0,width,height})
+      }
+      const pdfBytes = await outPdf.save()
+      const blob = new Blob([pdfBytes], {type:'application/pdf'})
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'edited.pdf'
+      link.click()
+    })()
+  }
+
+  function saveAnnotations(){
+    const data = JSON.stringify(annotations)
+    const blob = new Blob([data], {type:'application/json'})
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'annotations.json'
+    a.click()
+  }
+
+  function loadAnnotationsFile(e){
+    const f = e.target.files[0]
+    if(!f) return
+    const r = new FileReader()
+    r.onload = ()=>{
+      try{
+        const obj = JSON.parse(r.result)
+        pushUndo(annotations)
+        setAnnotations(obj)
+      }catch(err){ alert('Invalid JSON') }
+    }
+    r.readAsText(f)
+  }
+
+  return (
+    <div className="app">
+      <div className="header"><h2>PDF Editor — Enhanced</h2><div className="muted small">Undo/Redo, color picker, move/resize text, save/load annotations</div></div>
+      <div style={{display:'flex',gap:16,marginTop:12}}>
+        <div style={{width:340}} className="card">
+          <input ref={fileInputRef} type="file" accept="application/pdf" onChange={handleFile} />
+          <div className="toolbar" style={{marginTop:8}}>
+            <button className="button" onClick={()=>setMode('select')}>Select</button>
+            <button className="button" onClick={()=>setMode('text')}>Add Text</button>
+            <button className="button" onClick={()=>setMode('draw')}>Draw</button>
+          </div>
+          <div style={{marginTop:8}} className="small">Color: <input type="color" value={color} onChange={e=>setColor(e.target.value)} /></div>
+          <div style={{marginTop:8}} className="small">Font size: <input type="number" min={8} max={72} value={fontSize} onChange={e=>setFontSize(Number(e.target.value))} /></div>
+
+          <div className="pageNav small muted" style={{marginTop:12}}>
+            <button onClick={()=>setCurrentPageNum(p=>Math.max(1,p-1))} className="button">Prev</button>
+            <div>Page <strong>{currentPageNum}</strong> / {numPages}</div>
+            <button onClick={()=>setCurrentPageNum(p=>Math.min(numPages,p+1))} className="button">Next</button>
+          </div>
+
+          <div style={{marginTop:8}}>
+            <label className="small">Zoom</label>
+            <input type="range" min={0.5} max={2.0} step={0.1} value={scale} onChange={e=>setScale(Number(e.target.value))} />
+          </div>
+
+          <div style={{marginTop:12,display:'flex',gap:8,flexWrap:'wrap'}}>
+            <button className="button" onClick={doUndo}>Undo</button>
+            <button className="button" onClick={doRedo}>Redo</button>
+            <button className="button" onClick={deleteSelected}>Delete</button>
+            <button className="button" onClick={exportPDF}>Export PDF</button>
+          </div>
+
+          <div style={{marginTop:12,display:'flex',gap:8}}>
+            <button className="button" onClick={saveAnnotations}>Save Annotations</button>
+            <input type="file" accept="application/json" onChange={loadAnnotationsFile} />
+          </div>
+
+          <div style={{marginTop:8}} className="small muted">Tip: In Select mode click text to move it. Add Text then click on page to insert.</div>
+        </div>
+
+        <div style={{flex:1}} className="card">
+          <div className="small muted">Mode: <strong>{mode}</strong></div>
+          <div className="canvasWrap" style={{marginTop:8}}>
+            <canvas ref={canvasRef} className="pdfCanvas" />
+            <canvas ref={overlayRef} className="overlayCanvas" style={{pointerEvents: 'auto'}}
+              onPointerDown={handleCanvasPointerDown}
+              onPointerMove={handleCanvasPointerMove}
+              onPointerUp={handleCanvasPointerUp}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+--- src/styles.css ---
+:root{--bg:#f6f7fb;--card:#fff;--muted:#666}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:#111}
+.app{max-width:1100px;margin:24px auto;padding:20px}
+.header{display:flex;gap:12px;align-items:center}
+.card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 18px rgba(16,24,40,.06)}
+.controls{display:flex;gap:8px}
+.canvasWrap{position:relative;display:inline-block}
+.pdfCanvas{display:block;border:1px solid #ddd;border-radius:6px}
+.overlayCanvas{position:absolute;left:0;top:0}
+.toolbar{display:flex;gap:8px;margin-top:10px}
+.button{background:#0b69ff;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+.inputFile{padding:8px}
+.pageNav{display:flex;gap:8px;align-items:center;margin-top:8px}
+.annotationMode{padding:6px 10px;border-radius:8px;border:1px solid #ddd}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+---
+End of files
