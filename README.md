@@ -9,3 +9,9 @@ Features:
 - Save / Load annotations (JSON)
 - Export edited PDF (rasterized pages)
 
+Run locally:
+```
+npm install
+npm run dev
+```
+
