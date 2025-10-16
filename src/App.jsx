@@ -74,7 +74,6 @@ export default function App(){
     const next = redoStack.current.pop()
     setAnnotations(JSON.parse(next))
   }
-gs
   function handleFile(e){
     const file = e.target.files[0]
     if(!file) return
